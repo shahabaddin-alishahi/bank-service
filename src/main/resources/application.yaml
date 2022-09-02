@@ -1,0 +1,117 @@
+apis:
+  version: v1
+  internal: /_api/${apis.version}
+  secure: /api/${apis.version}
+  open: /open/${apis.version}
+
+server:
+  port: 8090
+  servlet:
+    context-path: /bank-service
+  shutdown: "graceful"
+
+
+spring:
+  application:
+    name: bank-service
+  profiles:
+    active: development
+  jpa:
+    properties:
+      hibernate:
+        default_schema: bank_service
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+  datasource:
+    url: ${DB_HOST:jdbc:postgresql://localhost:5432/bank_service}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+
+  flyway:
+    baselineOnMigrate: true
+    table: flyway_atm-service_history
+    enabled: true
+    out-of-order: false
+    ignore-migration-patterns:
+    default-schema: bank_service
+    create-schemas: true
+    schemas: bank_service
+  mvc:
+    log-request-details: true
+
+resilience4j:
+  retry:
+    configs:
+      default:
+        maxRetryAttempts: 2
+        waitDuration: 5000
+        ignoreExceptions:
+          - energizeglobalservices.bankservice.config.feign.FeignException
+    instances:
+      default-config:
+        baseConfig: default
+  circuitbreaker:
+    configs:
+      default:
+        failureRateThreshold: 20
+        slidingWindowType: COUNT_BASED
+        ignoreExceptions:
+          - energizeglobalservices.bankservice.config.feign.FeignException
+    instances:
+      default-config:
+        baseConfig: default
+
+
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 500000
+        responseTimeout: 10000
+        readTimeout: 5000 # actually readTimeout is sum of connectionTimeout and itself, so readTimeout is 10 seconds
+        errorDecoder: energizeglobalservices.bankservice.config.feign.FeignErrorDecoder
+        loggerLevel: full
+
+
+swagger:
+  host: localhost:${server.port}
+  api:
+    title: 'ATM service'
+    description: 'Swagger 2 API Documentation'
+    termsOfServiceUrl: 'https://energize.global.services.atm-service'
+    version: ${apis.version}
+    basePackage: energizeglobalservices.bankservice.controller
+
+services:
+  bank-service:
+    url: http://localhost:8081
+    name: ${spring.cloud.client.hostname}.bank-service
+    reset-password-tokens-url: /auth/_api/v1/reset-password-tokens
+
+energize-global-services:
+  feign:
+    connection-timeout: 10000
+    response-timeout: 10000
+  jwt:
+    secret: 'changeit'
+    access-token-validity-in-minute: 100
+    refresh-token-validity-in-minute: 200
+
+  card:
+    maxFailureRetryCount: 5
+
+  account:
+    maxFailureRetryCount: 3
+
+---
+spring:
+  messages:
+    basename: messages
+    encoding: UTF-8
+    use-code-as-default-message: true
+    always-use-message-format: true
+  mvc:
+    pathmatch:
+      matching-strategy: ANT_PATH_MATCHER

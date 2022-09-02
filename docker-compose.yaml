@@ -1,0 +1,12 @@
+version: "3.7"
+services:
+  postgres:
+    container_name: bank_service_postgres_db
+    image: postgres:12.2
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bank_service
+
